@@ -1,20 +1,21 @@
-let selectedFile = null;
+let audioFiles = [];
 
+// Elementos DOM
 const fileInput = document.getElementById('file-input');
 const dropZone = document.getElementById('drop-zone');
-const fileCard = document.getElementById('file-card');
-const fileName = document.getElementById('file-name');
-const fileSize = document.getElementById('file-size');
-const removeBtn = document.getElementById('remove-btn');
+const fileList = document.getElementById('file-list');
 const formatSelect = document.getElementById('format-select');
 const convertBtn = document.getElementById('convert-btn');
 const progressContainer = document.getElementById('progress-container');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 
-// Eventos de Seleção
+// =========================================================
+// 1. EVENTOS DE UPLOAD
+// =========================================================
 fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+    addFiles(e.target.files);
+    fileInput.value = '';
 });
 
 ['dragenter', 'dragover'].forEach(name => {
@@ -33,28 +34,76 @@ fileInput.addEventListener('change', (e) => {
 
 dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+    }
 });
 
-removeBtn.addEventListener('click', clearFile);
+// =========================================================
+// 2. GERENCIAMENTO DA LISTA DE ARQUIVOS
+// =========================================================
+function addFiles(files) {
+    const validFiles = Array.from(files).filter(file => 
+        file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|m4a|aac|flac|wma)$/i)
+    );
 
-function handleFileSelect(file) {
-    selectedFile = file;
-    fileName.textContent = file.name;
-    fileSize.textContent = formatBytes(file.size);
+    if (validFiles.length === 0 && files.length > 0) {
+        alert('Por favor, selecione arquivos de áudio válidos.');
+        return;
+    }
 
-    dropZone.classList.add('hidden');
-    fileCard.classList.remove('hidden');
-    convertBtn.disabled = false;
+    // Adiciona cada arquivo com status inicial
+    validFiles.forEach(file => {
+        audioFiles.push({
+            file: file,
+            status: 'pending' // 'pending', 'converting', 'done', 'error'
+        });
+    });
+
+    renderFileList();
 }
 
-function clearFile() {
-    selectedFile = null;
-    fileInput.value = '';
-    dropZone.classList.remove('hidden');
-    fileCard.classList.add('hidden');
-    convertBtn.disabled = true;
-    progressContainer.classList.add('hidden');
+function removeFile(index) {
+    audioFiles.splice(index, 1);
+    renderFileList();
+}
+
+function renderFileList() {
+    fileList.innerHTML = '';
+
+    if (audioFiles.length === 0) {
+        fileList.innerHTML = '<li class="empty-msg">Nenhum áudio selecionado ainda.</li>';
+        convertBtn.disabled = true;
+        convertBtn.textContent = 'Converter e Baixar Todos';
+        progressContainer.classList.add('hidden');
+        return;
+    }
+
+    audioFiles.forEach((item, index) => {
+        const li = document.createElement('li');
+        
+        let statusTag = '';
+        if (item.status === 'pending') statusTag = '<span style="color: var(--text-muted); font-size: 0.85rem;">Pendente</span>';
+        else if (item.status === 'converting') statusTag = '<span style="color: var(--primary-color); font-weight: bold; font-size: 0.85rem;">Convertendo...</span>';
+        else if (item.status === 'done') statusTag = '<span style="color: #10b981; font-weight: bold; font-size: 0.85rem;">Concluído ✓</span>';
+        else if (item.status === 'error') statusTag = '<span style="color: var(--danger-color); font-weight: bold; font-size: 0.85rem;">Erro ✕</span>';
+
+        li.innerHTML = `
+            <div class="file-info">
+                <span>🎧</span>
+                <span class="file-name" title="${item.file.name}">${item.file.name}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                ${statusTag}
+                <button class="btn-remove" onclick="removeFile(${index})" title="Remover">&times;</button>
+            </div>
+        `;
+
+        fileList.appendChild(li);
+    });
+
+    convertBtn.disabled = false;
+    convertBtn.textContent = `Converter ${audioFiles.length} ${audioFiles.length === 1 ? 'Áudio' : 'Áudios'} e Baixar`;
 }
 
 function formatBytes(bytes) {
@@ -70,58 +119,64 @@ function updateProgress(percent) {
     progressText.textContent = `${percent}%`;
 }
 
-// Lógica Principal de Conversão
+// =========================================================
+// 3. CONVERSÃO EM LOTE
+// =========================================================
 convertBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
+    if (audioFiles.length === 0) return;
 
     const targetFormat = formatSelect.value;
+    convertBtn.disabled = true;
+    progressContainer.classList.remove('hidden');
+    updateProgress(0);
 
-    try {
-        convertBtn.disabled = true;
-        convertBtn.textContent = 'A processar ficheiro de áudio...';
-        progressContainer.classList.remove('hidden');
-        updateProgress(10);
+    const total = audioFiles.length;
 
-        const arrayBuffer = await selectedFile.arrayBuffer();
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Descodifica o áudio do ficheiro
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        updateProgress(40);
+    for (let i = 0; i < total; i++) {
+        const item = audioFiles[i];
+        item.status = 'converting';
+        renderFileList();
 
-        if (targetFormat === 'wav') {
-            convertBtn.textContent = 'A gerar WAV...';
-            const wavBlob = bufferToWav(audioBuffer);
-            updateProgress(100);
-            downloadBlob(wavBlob, getOutputName('wav'));
-            finishConversion();
-        } else {
-            convertBtn.textContent = 'A converter para MP3...';
-            setTimeout(() => {
-                const mp3Blob = bufferToMp3(audioBuffer, (p) => updateProgress(40 + Math.round(p * 0.6)));
-                downloadBlob(mp3Blob, getOutputName('mp3'));
-                finishConversion();
-            }, 100);
+        try {
+            const arrayBuffer = await item.file.arrayBuffer();
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+            let resultBlob;
+            if (targetFormat === 'wav') {
+                resultBlob = bufferToWav(audioBuffer);
+            } else {
+                resultBlob = await bufferToMp3(audioBuffer);
+            }
+
+            // Inicia o download do arquivo individual
+            const outputName = getOutputName(item.file.name, targetFormat);
+            downloadBlob(resultBlob, outputName);
+
+            item.status = 'done';
+            audioCtx.close();
+
+        } catch (error) {
+            console.error('Erro no arquivo:', item.file.name, error);
+            item.status = 'error';
         }
 
-    } catch (error) {
-        console.error('Erro na conversão:', error);
-        alert('Não foi possível ler este ficheiro de áudio. Verifique se o ficheiro não está corrompido.');
-        finishConversion();
+        // Atualiza barra de progresso geral
+        const overallProgress = Math.round(((i + 1) / total) * 100);
+        updateProgress(overallProgress);
+        renderFileList();
     }
+
+    convertBtn.textContent = 'Todas as conversões foram concluídas!';
+    setTimeout(() => {
+        convertBtn.disabled = false;
+        renderFileList();
+    }, 3000);
 });
 
-function finishConversion() {
-    convertBtn.textContent = 'Conversão Concluída!';
-    setTimeout(() => {
-        convertBtn.textContent = 'Converter e Descarregar';
-        convertBtn.disabled = false;
-    }, 2500);
-}
-
-function getOutputName(ext) {
-    const originalName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || selectedFile.name;
-    return `${originalName}_convertido.${ext}`;
+function getOutputName(originalFileName, ext) {
+    const nameWithoutExt = originalFileName.substring(0, originalFileName.lastIndexOf('.')) || originalFileName;
+    return `${nameWithoutExt}_convertido.${ext}`;
 }
 
 function downloadBlob(blob, filename) {
@@ -134,56 +189,55 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// Converte AudioBuffer em MP3 usando lamejs
-function bufferToMp3(buffer, onProgress) {
-    const channels = buffer.numberOfChannels;
-    const sampleRate = buffer.sampleRate;
-    const kbps = 128;
-    const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
-    
-    const sampleBlockSize = 1152;
-    const left = buffer.getChannelData(0);
-    const right = channels > 1 ? buffer.getChannelData(1) : left;
-    
-    const samplesLen = left.length;
-    const mp3Data = [];
-
-    // Converter Float32 para Int16
-    const leftInt16 = new Int16Array(samplesLen);
-    const rightInt16 = new Int16Array(samplesLen);
-
-    for (let i = 0; i < samplesLen; i++) {
-        let sL = Math.max(-1, Math.min(1, left[i]));
-        leftInt16[i] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
-
-        let sR = Math.max(-1, Math.min(1, right[i]));
-        rightInt16[i] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
-    }
-
-    for (let i = 0; i < samplesLen; i += sampleBlockSize) {
-        const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
-        const rightChunk = rightInt16.subarray(i, i + sampleBlockSize);
+// =========================================================
+// 4. FUNÇÕES DE ENCODING (MP3 & WAV)
+// =========================================================
+function bufferToMp3(buffer) {
+    return new Promise((resolve) => {
+        const channels = buffer.numberOfChannels;
+        const sampleRate = buffer.sampleRate;
+        const kbps = 128;
+        const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
         
-        let mp3buf;
-        if (channels === 1) {
-            mp3buf = mp3encoder.encodeBuffer(leftChunk);
-        } else {
-            mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+        const sampleBlockSize = 1152;
+        const left = buffer.getChannelData(0);
+        const right = channels > 1 ? buffer.getChannelData(1) : left;
+        
+        const samplesLen = left.length;
+        const mp3Data = [];
+
+        const leftInt16 = new Int16Array(samplesLen);
+        const rightInt16 = new Int16Array(samplesLen);
+
+        for (let i = 0; i < samplesLen; i++) {
+            let sL = Math.max(-1, Math.min(1, left[i]));
+            leftInt16[i] = sL < 0 ? sL * 0x8000 : sL * 0x7FFF;
+
+            let sR = Math.max(-1, Math.min(1, right[i]));
+            rightInt16[i] = sR < 0 ? sR * 0x8000 : sR * 0x7FFF;
         }
 
-        if (mp3buf.length > 0) mp3Data.push(mp3buf);
-        if (onProgress && i % (sampleBlockSize * 10) === 0) {
-            onProgress(i / samplesLen);
+        for (let i = 0; i < samplesLen; i += sampleBlockSize) {
+            const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
+            const rightChunk = rightInt16.subarray(i, i + sampleBlockSize);
+            
+            let mp3buf;
+            if (channels === 1) {
+                mp3buf = mp3encoder.encodeBuffer(leftChunk);
+            } else {
+                mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+            }
+
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
         }
-    }
 
-    const endBuf = mp3encoder.flush();
-    if (endBuf.length > 0) mp3Data.push(endBuf);
+        const endBuf = mp3encoder.flush();
+        if (endBuf.length > 0) mp3Data.push(endBuf);
 
-    return new Blob(mp3Data, { type: 'audio/mp3' });
+        resolve(new Blob(mp3Data, { type: 'audio/mp3' }));
+    });
 }
 
-// Converte AudioBuffer em WAV
 function bufferToWav(buffer) {
     const numOfChan = buffer.numberOfChannels;
     const length = buffer.length * numOfChan * 2 + 44;
