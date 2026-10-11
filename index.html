@@ -3,67 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversor de Áudio - Local & Seguro</title>
+    <title>Conversor de Áudio em Lote - Local & Seguro</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Encoder MP3 100% client-side (compatível com GitHub Pages) -->
+    <!-- Encoder MP3 100% client-side -->
     <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 </head>
 <body>
 
     <div class="container">
         <header>
-            <h1>🎵 Conversor de Áudio</h1>
-            <p>Converte os teus ficheiros de áudio com total privacidade e velocidade.</p>
+            <h1>🎵 Conversor de Áudio em Lote</h1>
+            <p>Selecione ou arraste múltiplos áudios para converter todos de uma vez.</p>
         </header>
 
         <main>
-            <!-- ÁREA DE UPLOAD -->
+            <!-- ÁREA DE UPLOAD (MÚLTIPLOS ARQUIVOS) -->
             <div class="upload-area" id="drop-zone">
-                <input type="file" id="file-input" accept="audio/*">
+                <input type="file" id="file-input" accept="audio/*" multiple>
                 <label for="file-input" class="upload-label">
                     <span class="icon">📁</span>
-                    <span>Clica para selecionar ou arrasta o ficheiro de áudio</span>
+                    <span>Clique para selecionar ou arraste os áudios aqui</span>
                 </label>
             </div>
 
-            <!-- PAINEL DO FICHEIRO SELECIONADO -->
-            <div class="file-card hidden" id="file-card">
-                <div class="file-info">
-                    <span class="audio-icon">🎧</span>
-                    <div class="file-details">
-                        <span class="file-name" id="file-name">audio.mp3</span>
-                        <span class="file-size" id="file-size">0 MB</span>
-                    </div>
-                </div>
-                <button class="btn-remove" id="remove-btn" title="Remover ficheiro">&times;</button>
+            <!-- LISTA DE ARQUIVOS SELECIONADOS -->
+            <div class="file-list-container">
+                <h3>Áudios Selecionados:</h3>
+                <ul id="file-list" class="file-list">
+                    <li class="empty-msg">Nenhum áudio selecionado ainda.</li>
+                </ul>
             </div>
 
             <!-- OPÇÕES DE CONVERSÃO -->
             <div class="options-group">
-                <label for="format-select">Converter para o formato:</label>
+                <label for="format-select">Converter todos para o formato:</label>
                 <select id="format-select" class="select-input">
                     <option value="mp3">MP3 (.mp3)</option>
                     <option value="wav">WAV (.wav)</option>
                 </select>
             </div>
 
-            <!-- BARRA DE PROGRESSO -->
+            <!-- BARRA DE PROGRESSO GERAL -->
             <div class="progress-container hidden" id="progress-container">
                 <div class="progress-bar" id="progress-bar"></div>
                 <span class="progress-text" id="progress-text">0%</span>
             </div>
 
-            <!-- BOTÃO DE CONVERSÃO -->
+            <!-- BOTÃO DE AÇÃO -->
             <div class="actions">
                 <button id="convert-btn" class="btn-primary" disabled>
-                    Converter e Descarregar
+                    Converter e Baixar Todos
                 </button>
             </div>
         </main>
 
         <footer>
-            <p>Processamento 100% local — Os teus ficheiros não saem do teu navegador.</p>
+            <p>Processamento 100% local — Seus arquivos não saem do seu navegador.</p>
         </footer>
     </div>
 
