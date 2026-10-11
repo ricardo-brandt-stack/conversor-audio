@@ -6,8 +6,8 @@
     <title>Conversor de Áudio - Local & Seguro</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Biblioteca FFmpeg WebAssembly para conversão de áudio no navegador -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <!-- Encoder MP3 100% client-side (compatível com GitHub Pages) -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 </head>
 <body>
 
@@ -45,10 +45,6 @@
                 <select id="format-select" class="select-input">
                     <option value="mp3">MP3 (.mp3)</option>
                     <option value="wav">WAV (.wav)</option>
-                    <option value="ogg">OGG (.ogg)</option>
-                    <option value="m4a">M4A (.m4a)</option>
-                    <option value="aac">AAC (.aac)</option>
-                    <option value="flac">FLAC (.flac)</option>
                 </select>
             </div>
 
