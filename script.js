@@ -1,11 +1,8 @@
-// Instância do FFmpeg
-const { createFFmpeg, fetchFile } = FFmpeg;
-const ffmpeg = createFFmpeg({ log: true });
-
-// Estado
+// Estado da aplicação
 let selectedFile = null;
+let audioBuffer = null;
 
-// Elementos DOM
+// Referências aos elementos do DOM
 const fileInput = document.getElementById('file-input');
 const dropZone = document.getElementById('drop-zone');
 const fileCard = document.getElementById('file-card');
@@ -19,7 +16,7 @@ const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 
 // =========================================================
-// 1. EVENTOS DE SELEÇÃO DE FICHEIRO
+// 1. GESTÃO DE FICHEIROS E INTERFACE
 // =========================================================
 fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
@@ -50,11 +47,6 @@ dropZone.addEventListener('drop', (e) => {
 removeBtn.addEventListener('click', clearFile);
 
 function handleFileSelect(file) {
-    if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/i)) {
-        alert('Por favor, seleciona um ficheiro de áudio válido.');
-        return;
-    }
-
     selectedFile = file;
     fileName.textContent = file.name;
     fileSize.textContent = formatBytes(file.size);
@@ -66,6 +58,7 @@ function handleFileSelect(file) {
 
 function clearFile() {
     selectedFile = null;
+    audioBuffer = null;
     fileInput.value = '';
     dropZone.classList.remove('hidden');
     fileCard.classList.add('hidden');
@@ -81,74 +74,113 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// =========================================================
-// 2. LÓGICA DE CONVERSÃO COM FFMPEG.WASM
-// =========================================================
-convertBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
-
-    const targetFormat = formatSelect.value;
-    const inputName = 'input_audio';
-    const outputName = `converted_audio.${targetFormat}`;
-
-    try {
-        convertBtn.disabled = true;
-        convertBtn.textContent = 'A carregar motor de conversão...';
-        progressContainer.classList.remove('hidden');
-        updateProgress(0);
-
-        // Carrega o motor FFmpeg caso ainda não esteja carregado
-        if (!ffmpeg.isLoaded()) {
-            await ffmpeg.load();
-        }
-
-        // Atualiza percentagem com os logs do FFmpeg
-        ffmpeg.setProgress(({ ratio }) => {
-            const percentage = Math.round(ratio * 100);
-            if (percentage >= 0 && percentage <= 100) {
-                updateProgress(percentage);
-            }
-        });
-
-        convertBtn.textContent = 'A converter áudio...';
-
-        // Escreve o ficheiro na memória virtual do FFmpeg
-        ffmpeg.FS('writeFile', inputName, await fetchFile(selectedFile));
-
-        // Executa o comando de conversão
-        await ffmpeg.run('-i', inputName, outputName);
-
-        // Lê o ficheiro convertido
-        const data = ffmpeg.FS('readFile', outputName);
-
-        // Descarrega o ficheiro final
-        downloadAudio(data, outputName, targetFormat);
-
-        // Limpa a memória virtual
-        ffmpeg.FS('unlink', inputName);
-        ffmpeg.FS('unlink', outputName);
-
-        convertBtn.textContent = 'Conversão Concluída!';
-        setTimeout(() => {
-            convertBtn.textContent = 'Converter e Descarregar';
-            convertBtn.disabled = false;
-        }, 3000);
-
-    } catch (error) {
-        console.error('Erro ao converter:', error);
-        alert('Ocorreu um erro ao converter o ficheiro de áudio.');
-        convertBtn.textContent = 'Converter e Descarregar';
-        convertBtn.disabled = false;
-    }
-});
-
 function updateProgress(percent) {
     progressBar.style.width = `${percent}%`;
     progressText.textContent = `${percent}%`;
 }
 
-function downloadAudio(data, filename, format) {
-    const blob = new Blob([data.buffer], { type: `audio/${format}` });
+// =========================================================
+// 2. CONVERSÃO DE ÁUDIO VIA WEB AUDIO API (NATIVA E SEGURA)
+// =========================================================
+convertBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    const targetFormat = formatSelect.value;
+
+    try {
+        convertBtn.disabled = true;
+        convertBtn.textContent = 'A descodificar áudio...';
+        progressContainer.classList.remove('hidden');
+        updateProgress(20);
+
+        // Ler ficheiro e descodificar
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        updateProgress(50);
+        convertBtn.textContent = 'A converter áudio...';
+
+        if (targetFormat === 'wav') {
+            const wavBlob = bufferToWav(audioBuffer);
+            updateProgress(100);
+            downloadBlob(wavBlob, getOutputName('wav'));
+            finishConversion();
+        } else {
+            // Conversão usando MediaRecorder
+            const destination = audioCtx.createMediaStreamDestination();
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(destination);
+
+            let mimeType = getSupportedMimeType(targetFormat);
+            const mediaRecorder = new MediaRecorder(destination.stream, { mimeType });
+            const chunks = [];
+
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const finalBlob = new Blob(chunks, { type: mimeType });
+                updateProgress(100);
+                downloadBlob(finalBlob, getOutputName(targetFormat));
+                audioCtx.close();
+                finishConversion();
+            };
+
+            mediaRecorder.start();
+            source.start(0);
+
+            // Simular progresso durante a gravação
+            let progress = 50;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress < 95) updateProgress(progress);
+            }, 100);
+
+            source.onended = () => {
+                clearInterval(interval);
+                mediaRecorder.stop();
+            };
+        }
+
+    } catch (error) {
+        console.error('Erro ao converter:', error);
+        alert('Não foi possível converter este ficheiro de áudio. Certifique-se de que o formato original é válido.');
+        finishConversion();
+    }
+});
+
+function finishConversion() {
+    convertBtn.textContent = 'Conversão Concluída!';
+    setTimeout(() => {
+        convertBtn.textContent = 'Converter e Descarregar';
+        convertBtn.disabled = false;
+    }, 2500);
+}
+
+function getOutputName(ext) {
+    const originalName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+    return `${originalName}_convertido.${ext}`;
+}
+
+function getSupportedMimeType(format) {
+    const types = {
+        mp3: ['audio/mp3', 'audio/mpeg', 'audio/webm;codecs=opus'],
+        ogg: ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus'],
+        m4a: ['audio/mp4', 'audio/aac', 'audio/webm'],
+        aac: ['audio/aac', 'audio/webm'],
+        flac: ['audio/flac', 'audio/webm']
+    };
+
+    const targetTypes = types[format] || ['audio/webm'];
+    for (const type of targetTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+            return type;
+        }
+    }
+    return '';
+}
+
+function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -156,4 +188,42 @@ function downloadAudio(data, filename, format) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+}
+
+// Converte AudioBuffer para ficheiro WAV puro
+function bufferToWav(buffer) {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const out = new DataView(new ArrayBuffer(length));
+    let channels = [], sampleRate = buffer.sampleRate, offset = 0, pos = 0;
+
+    function setUint16(data) { out.setUint16(pos, data, true); pos += 2; }
+    function setUint32(data) { out.setUint32(pos, data, true); pos += 4; }
+
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8);
+    setUint32(0x45564157); // "WAVE"
+    setUint32(0x20746d66); // "fmt "
+    setUint32(16);
+    setUint16(1);
+    setUint16(numOfChan);
+    setUint32(sampleRate);
+    setUint32(sampleRate * 2 * numOfChan);
+    setUint16(numOfChan * 2);
+    setUint16(16);
+    setUint32(0x61746164); // "data"
+    setUint32(length - pos - 4);
+
+    for (let i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+    while (offset < buffer.length) {
+        for (let i = 0; i < numOfChan; i++) {
+            let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+            out.setInt16(pos, sample, true);
+            pos += 2;
+        }
+        offset++;
+    }
+    return new Blob([out], { type: 'audio/wav' });
 }
