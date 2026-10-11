@@ -1,0 +1,250 @@
+/* RESET E VARIÁVEIS DE CORES */
+:root {
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-light: #eff6ff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --radius: 12px;
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 550px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 32px;
+    border: 1px solid #e2e8f0;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* ÁREA DE UPLOAD */
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+    background-color: #f1f5f9;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover, .upload-area.dragover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.upload-area input[type="file"] {
+    display: none;
+}
+
+.upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 20px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.upload-label .icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.upload-label span:not(.icon) {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* CARD DO FICHEIRO */
+.file-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background-color: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.audio-icon {
+    font-size: 1.5rem;
+}
+
+.file-details {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.file-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+
+.file-size {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 0 8px;
+}
+
+.btn-remove:hover {
+    color: var(--danger-hover);
+}
+
+/* OPÇÕES */
+.options-group {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.options-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.select-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #fff;
+    outline: none;
+    cursor: pointer;
+}
+
+.select-input:focus {
+    border-color: var(--primary-color);
+}
+
+/* BARRA DE PROGRESSO */
+.progress-container {
+    margin-top: 20px;
+    background-color: #e2e8f0;
+    border-radius: 8px;
+    height: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background-color: var(--primary-color);
+    height: 100%;
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* BOTÃO PRINCIPAL */
+.actions {
+    margin-top: 24px;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.hidden {
+    display: none !important;
+}
+
+footer {
+    margin-top: 24px;
+    text-align: center;
+}
+
+footer p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}

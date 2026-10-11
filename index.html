@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Áudio - Local & Seguro</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Biblioteca FFmpeg WebAssembly para conversão de áudio no navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🎵 Conversor de Áudio</h1>
+            <p>Converte os teus ficheiros de áudio com total privacidade e velocidade.</p>
+        </header>
+
+        <main>
+            <!-- ÁREA DE UPLOAD -->
+            <div class="upload-area" id="drop-zone">
+                <input type="file" id="file-input" accept="audio/*">
+                <label for="file-input" class="upload-label">
+                    <span class="icon">📁</span>
+                    <span>Clica para selecionar ou arrasta o ficheiro de áudio</span>
+                </label>
+            </div>
+
+            <!-- PAINEL DO FICHEIRO SELECIONADO -->
+            <div class="file-card hidden" id="file-card">
+                <div class="file-info">
+                    <span class="audio-icon">🎧</span>
+                    <div class="file-details">
+                        <span class="file-name" id="file-name">audio.mp3</span>
+                        <span class="file-size" id="file-size">0 MB</span>
+                    </div>
+                </div>
+                <button class="btn-remove" id="remove-btn" title="Remover ficheiro">&times;</button>
+            </div>
+
+            <!-- OPÇÕES DE CONVERSÃO -->
+            <div class="options-group">
+                <label for="format-select">Converter para o formato:</label>
+                <select id="format-select" class="select-input">
+                    <option value="mp3">MP3 (.mp3)</option>
+                    <option value="wav">WAV (.wav)</option>
+                    <option value="ogg">OGG (.ogg)</option>
+                    <option value="m4a">M4A (.m4a)</option>
+                    <option value="aac">AAC (.aac)</option>
+                    <option value="flac">FLAC (.flac)</option>
+                </select>
+            </div>
+
+            <!-- BARRA DE PROGRESSO -->
+            <div class="progress-container hidden" id="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+                <span class="progress-text" id="progress-text">0%</span>
+            </div>
+
+            <!-- BOTÃO DE CONVERSÃO -->
+            <div class="actions">
+                <button id="convert-btn" class="btn-primary" disabled>
+                    Converter e Descarregar
+                </button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Processamento 100% local — Os teus ficheiros não saem do teu navegador.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
